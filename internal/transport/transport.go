@@ -184,7 +184,7 @@ type Config struct {
 	URL *url.URL `yaml:"-"`
 }
 
-// New config takes a YAML byte slice and returns a new transport configuration for upserting data to storage.
+// NewConfig takes a YAML byte slice and returns a new transport configuration for upserting data to storage.
 //
 // For web requests defined on the transport configuration, the default HTTP Request Method is "GET". Furthermore,
 // if rate limit data has not been defined for a request it will inherit the rate limit data from the transport config.
@@ -266,18 +266,24 @@ type repoCloser func()
 func (cfg *Config) repos(ctx context.Context) ([]repository.Generic, repoCloser, error) {
 	repos := []repository.Generic{}
 
+	connectionStrings := make(map[string]bool, len(cfg.ConnectionStrings))
+
 	for _, dns := range cfg.ConnectionStrings {
-		repo, err := repository.NewTx(ctx, dns)
-		if err != nil {
-			return nil, nil, WrapRepositoryError(repository.FailedToCreateRepositoryError(err))
-		}
+		_, ok := connectionStrings[dns]
+		if !ok {
+			repo, err := repository.NewTx(ctx, dns)
+			if err != nil {
+				return nil, nil, WrapRepositoryError(repository.FailedToCreateRepositoryError(err))
+			}
 
-		logInfo := tools.LogFormatter{
-			Msg: fmt.Sprintf("created repository for %q", dns),
-		}
-		cfg.Logger.Info(logInfo.String())
+			logInfo := tools.LogFormatter{
+				Msg: fmt.Sprintf("created repository for %q", dns),
+			}
+			cfg.Logger.Info(logInfo.String())
 
-		repos = append(repos, repo)
+			repos = append(repos, repo)
+			connectionStrings[dns] = true
+		}
 	}
 
 	return repos, func() {
