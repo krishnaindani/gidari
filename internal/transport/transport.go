@@ -283,6 +283,8 @@ func (cfg *Config) repos(ctx context.Context) ([]repository.Generic, repoCloser,
 
 			repos = append(repos, repo)
 			connectionStrings[dns] = true
+		} else {
+			cfg.Logger.Warnf("duplicate connection string found %s", dns)
 		}
 	}
 
